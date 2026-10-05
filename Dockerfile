@@ -168,6 +168,13 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && 
 
 WORKDIR /opt/hermes
 
+# Workspace MCP is independently locked and installed at build time. Its
+# executable is launched directly; no uvx/pip downloads occur at runtime.
+COPY integrations/google/pyproject.toml integrations/google/uv.lock /opt/google-workspace-build/
+RUN UV_PROJECT_ENVIRONMENT=/opt/google-workspace uv sync \
+    --directory /opt/google-workspace-build --python /usr/bin/python3 \
+    --frozen --no-default-groups && chmod -R a+rX,go-w /opt/google-workspace
+
 # ---------- Layer-cached dependency install ----------
 # Copy only package manifests first so npm install + Playwright are cached
 # unless the lockfiles themselves change.
