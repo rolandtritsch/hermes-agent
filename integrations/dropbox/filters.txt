@@ -1,0 +1,15 @@
+# Hard-excludes these folders. Confirmed via `rclone lsf dropbox:` on
+# 2026-10-06 that all five are top-level (no "Roland Tritsch" nesting exists)
+# — see pulumi-hermes/docs/dropbox.md for how to re-confirm if the account
+# structure changes.
+- Shotwell/**
+- Shotwell
+- Archive/**
+- Archive
+- Videos/**
+- Videos
+- Drobo/**
+- Drobo
+- GoogleDrive/**
+- GoogleDrive
++ **
