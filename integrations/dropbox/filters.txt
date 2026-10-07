@@ -12,4 +12,10 @@
 - Drobo
 - GoogleDrive/**
 - GoogleDrive
+# Dated Shotwell backups nested under Tmp/ (e.g. Tmp/Shotwell.20250909/) slipped
+# through the top-level-only exclude list above and synced 20GB+ of large video
+# clips before being caught live during the first resync (2026-10-06). The rest
+# of Tmp/ is kept; only Shotwell-named snapshots inside it are excluded.
+- Tmp/Shotwell.*/**
+- Tmp/Shotwell.*
 + **

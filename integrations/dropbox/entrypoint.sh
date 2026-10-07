@@ -9,8 +9,16 @@ set -eu
 MIRROR="${HOME}/Dropbox"
 WORKDIR="${HOME}/.cache/rclone/bisync"
 MARKER="${HOME}/.bisync-initialized"
-FILTERS=/opt/dropbox-filters.txt
 INTERVAL="${BISYNC_INTERVAL_SECONDS:-300}"
+
+# rclone writes a .md5 stamp of the filters file *next to* the filters file
+# itself (to detect mid-run filter changes), but /opt is root-owned and
+# read-only for this container's runtime user — writing there fails with
+# "Bisync critical error: ... permission denied" (hit live in production).
+# Copy the baked filters into the writable EFS home instead, same seed-from-
+# image-into-EFS shape the dropboxd-era entrypoint used for .dropbox-dist.
+FILTERS="${HOME}/dropbox-filters.txt"
+cp /opt/dropbox-filters.txt "${FILTERS}"
 
 mkdir -p "${MIRROR}" "${WORKDIR}"
 
@@ -18,9 +26,12 @@ while true; do
     if [ ! -e "${MARKER}" ]; then
         # First run: no prior baseline. --resync-mode path1 (the --resync
         # default) treats Dropbox as authoritative, which is moot here since
-        # the local side starts empty anyway.
+        # the local side starts empty anyway. --max-lock auto-expires a lock
+        # left behind by a killed/crashed prior run (hit live: an abruptly
+        # terminated run left a permanent lock that wedged every retry until
+        # manually cleared) instead of requiring manual intervention forever.
         if rclone bisync dropbox: "${MIRROR}" \
-            --filters-file="${FILTERS}" --workdir="${WORKDIR}" --resync -v; then
+            --filters-file="${FILTERS}" --workdir="${WORKDIR}" --max-lock 15m --resync -v; then
             touch "${MARKER}"
         else
             echo "Initial --resync failed; will retry in ${INTERVAL}s" >&2
@@ -31,7 +42,7 @@ while true; do
         # human to re-run --resync. Deliberately no --force: bisync's own
         # mass-deletion abort stays active.
         rclone bisync dropbox: "${MIRROR}" \
-            --filters-file="${FILTERS}" --workdir="${WORKDIR}" \
+            --filters-file="${FILTERS}" --workdir="${WORKDIR}" --max-lock 15m \
             --recover --resilient -v || \
             echo "bisync run failed; will retry in ${INTERVAL}s" >&2
     fi
