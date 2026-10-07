@@ -226,20 +226,6 @@ RUN cd plugins/platforms/photon/sidecar && \
     npm ci --no-audit --fetch-retries=5 && \
     npm cache clean --force
 
-# ---------- WhatsApp (Baileys) bridge deps (baked) ----------
-# Same reasoning as the Photon block above: plugins/platforms/whatsapp/adapter.py's
-# _ensure_bridge_deps() does a lazy `npm install` keyed off a package.json hash
-# stamp file (node_modules/.hermes-pkg-hash, sha256(package.json)[:16]) — that
-# would hit EROFS against the sealed, read-only /opt/hermes tree. Bake the deps
-# and pre-write the stamp so the adapter's install-skip check passes immediately.
-COPY scripts/whatsapp-bridge/package.json \
-     scripts/whatsapp-bridge/package-lock.json \
-     scripts/whatsapp-bridge/
-RUN cd scripts/whatsapp-bridge && \
-    npm ci --no-audit --fetch-retries=5 && \
-    npm cache clean --force && \
-    sha256sum package.json | cut -c1-16 > node_modules/.hermes-pkg-hash
-
 # ---------- Layer-cached Python dependency install ----------
 # Copy only pyproject.toml + uv.lock so the Python dep resolve + wheel
 # download + native-extension compile layer is cached unless those inputs
